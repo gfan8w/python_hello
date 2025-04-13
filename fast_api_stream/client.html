@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Streaming Client (client.html)</title>
+</head>
+<body>
+aaa
+<div id="output"></div>
+
+<script>
+    const outputDiv = document.getElementById('output');
+
+    // 替换为你的实际接口地址
+    const url = '$FASTAPI$';
+
+    // 使用 Fetch API 发送请求
+    fetch(url)
+        .then(response => {
+            const reader = response.body.getReader();
+            return new ReadableStream({
+                async start(controller) {
+                    while (true) {
+                        const { done, value } = await reader.read();
+
+                        // 如果读取完毕，中止流
+                        if (done) {
+                            controller.close();
+                            break;
+                        }
+
+                        // 将每个块的内容添加到页面上
+                        outputDiv.innerHTML += new TextDecoder().decode(value) +"<br>";
+                    }
+                }
+            });
+        })
+        .then(stream => {
+            // 使用 TextStream，将流连接到页面上的输出
+            const textStream = new TextStream(stream);
+            return textStream.pipeTo(new WritableStream({
+                write: chunk => {
+                    // 在这里你可以处理每个块的数据
+                    console.log('Received chunk:', chunk);
+                }
+            }));
+        })
+        .catch(error => console.error('Error:', error));
+</script>
+
+</body>
+</html>

@@ -1,0 +1,7 @@
+.idea/
+AI_Python_for_Intermediates/.env
+.DS_Store
+.env
+logs
+__pycache__
+*.py[cod]
