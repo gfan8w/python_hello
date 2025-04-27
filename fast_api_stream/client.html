@@ -7,47 +7,170 @@
     <title>Streaming Client (client.html)</title>
 </head>
 <body>
-aaa
+Below is the content:<br >
+<button id="startButton">Start Streaming</button>
+<button id="pauseButton">Pause</button>
+<button id="resumeButton" disabled>Resume</button>
 <div id="output"></div>
 
 <script>
-    const outputDiv = document.getElementById('output');
+     // 替换为你的实际接口地址
+    const baseUrl = '$FASTAPI$';
 
-    // 替换为你的实际接口地址
-    const url = '$FASTAPI$';
+    const outputDiv = document.getElementById('output');
+    const startButton = document.getElementById('startButton');
+    const pauseButton = document.getElementById('pauseButton');
+    const resumeButton = document.getElementById('resumeButton');
+
+    let paused = false; // Flag to control pause/resume
+    let sessionId = null;
+    // Add event listener to the button
+    startButton.addEventListener('click', () => {
+        outputDiv.innerHTML = ""; // Clear previous output
+        paused = false;
+        // 生成或使用现有的 sessionId
+        sessionId = sessionId || crypto.randomUUID();
+
+        run2(`${baseUrl}/stream?session_id=${sessionId}`).then(() => {
+            console.log("Streaming completed");
+        }).catch(error => {
+            console.error('Error:', error);
+        })
+    });
+
+    pauseButton.addEventListener('click', () => {
+        pauseStream(`${baseUrl}/pause?session_id=${sessionId}`).then(o=>{
+                pauseButton.disabled = true;
+                resumeButton.disabled = false;
+                paused = true;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    });
+
+    resumeButton.addEventListener('click', () => {
+
+
+        continueStream(`${baseUrl}/continue?session_id=${sessionId}`)
+            .then(o=>{
+                pauseButton.disabled = false;
+                resumeButton.disabled = true;
+                 paused = false;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    });
 
     // 使用 Fetch API 发送请求
-    fetch(url)
-        .then(response => {
-            const reader = response.body.getReader();
-            return new ReadableStream({
-                async start(controller) {
-                    while (true) {
-                        const { done, value } = await reader.read();
+     function run1(url) {
+         fetch(url)
+             .then(response => {
+                 const reader = response.body.getReader();
+                 return new ReadableStream({
+                     async start(controller) {
+                         while (true) {
+                             const {done, value} = await reader.read();
 
-                        // 如果读取完毕，中止流
-                        if (done) {
-                            controller.close();
-                            break;
-                        }
+                             // 如果读取完毕，中止流
+                             if (done) {
+                                 controller.close();
+                                 break;
+                             }
 
-                        // 将每个块的内容添加到页面上
-                        outputDiv.innerHTML += new TextDecoder().decode(value) +"<br>";
-                    }
-                }
-            });
-        })
-        .then(stream => {
-            // 使用 TextStream，将流连接到页面上的输出
-            const textStream = new TextStream(stream);
-            return textStream.pipeTo(new WritableStream({
-                write: chunk => {
-                    // 在这里你可以处理每个块的数据
-                    console.log('Received chunk:', chunk);
-                }
-            }));
-        })
-        .catch(error => console.error('Error:', error));
+                             // 将每个块的内容添加到页面上
+                             outputDiv.innerHTML += new TextDecoder().decode(value) + "<br>";
+                         }
+                     }
+                 });
+             })
+             .then(stream => {
+                 // 使用 TextStream，将流连接到页面上的输出
+                 const textStream = new TextStream(stream);
+                 return textStream.pipeTo(new WritableStream({
+                     write: chunk => {
+                         // 在这里你可以处理每个块的数据
+                         console.log('Received chunk:', chunk);
+                     }
+                 }));
+             })
+             .catch(error => console.error('Error:', error));
+     }
+
+     // 模拟大文件的接受，能更好的处理分片的问题。
+    async function* makeTextFileLineIterator(fileURL) {
+      const response = await fetch(fileURL);
+      const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+
+      let { value: chunk, done: readerDone } = await reader.read();
+      chunk = chunk || "";
+
+      const newline = /\n\n/gm;
+      let startIndex = 0;
+
+      while (true) {
+        const result = newline.exec(chunk);
+        if (!result) {
+          if (readerDone) break;
+          const remainder = chunk.substr(startIndex);
+          ({ value: chunk, done: readerDone } = await reader.read());
+          chunk = remainder + (chunk || "");
+          startIndex = newline.lastIndex = 0;
+          continue;
+        }
+        yield chunk.substring(startIndex, result.index);
+        startIndex = newline.lastIndex;
+      }
+
+      if (startIndex < chunk.length) {
+        // Last line didn't end in a newline char
+        yield chunk.substring(startIndex);
+      }
+    }
+
+    async function run2(url) {
+      for await (const line of makeTextFileLineIterator(url)) {
+        processLine(line);
+      }
+    }
+
+    async function pauseStream(url) {
+        if (!sessionId) return;
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ session_id: sessionId })
+        });
+
+        const result = await response.json();
+        console.log('暂停结果:', result);
+    }
+
+    async function continueStream(url) {
+        if (!sessionId) return;
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ session_id: sessionId })
+        });
+
+        const result = await response.json();
+        console.log('继续结果:', result);
+
+    }
+
+    function processLine(line) {
+      console.log(line);
+      // 将每个块的内容添加到页面上
+      outputDiv.innerHTML += line +"<br>";
+    }
 </script>
 
 </body>
