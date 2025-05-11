@@ -4,3 +4,5 @@ openai~=1.68.2
 uvicorn
 fastapi
 aiohttp
+confluent_kafka
+aiokafka
