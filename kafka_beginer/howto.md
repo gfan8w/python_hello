@@ -17,7 +17,12 @@ send a message
 `docker exec -it <kafka-container-id> kafka-console-producer --broker-list kafka-1:9092,kafka-2:9092 --topic my-topic`
 
 
-
+### 为特定主题设置保留策略
+```
+kafka-configs --bootstrap-server localhost:9092 \
+ --entity-type topics --entity-name aio-topic \
+ --alter --add-config retention.ms=3600000
+```
 
 
 
