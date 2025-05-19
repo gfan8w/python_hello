@@ -6,3 +6,9 @@ fastapi
 aiohttp
 confluent_kafka
 aiokafka
+kafka-python
+odmantic
+passlib
+python-jose
+motor
+cryptography
