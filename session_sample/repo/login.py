@@ -1,6 +1,6 @@
 import json
 from typing import Dict, Any
-
+from bson import datetime
 from passlib.context import CryptContext
 
 from session_sample.models.models import Login, Profile
@@ -18,7 +18,8 @@ class LoginRepository:
         
     async def insert_login(self, details:Dict[str, Any]) -> bool: 
         try:
-           login = Login(**details)
+           login = Login(**details, profile=[],passphrase="")
+           # login.profile = [Profile(firstname="", lastname="", middlename="", date_signed=datetime.datetime.now(), age=0, occupation="", birthday=datetime.datetime.now(), address="")]
            login.passphrase = pwd_context.encrypt(login.password)
            await self.engine.save(login)
                   
@@ -32,7 +33,7 @@ class LoginRepository:
           login = await self.engine.find_one(Login, Login.username == username)
                   
           profile = Profile(**details)
-          login.profile = profile
+          login.profile = [profile]
           
           await self.engine.save(login)
        except Exception as e:

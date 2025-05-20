@@ -13,7 +13,8 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.staticfiles import StaticFiles
 
 from config.db import create_db_engine, create_db_connection, close_db_connection
-from session_sample.models.models import ProfileReq, Profile
+from session_sample.models.dto import LoginReq, ProfileReq
+from session_sample.models.models import Profile
 from session_sample.repo.login import LoginRepository
 from session_sample.repo.session import DbSessionRepository
 from util.json_date import json_datetime_serializer
@@ -40,13 +41,6 @@ class JSONEncoder(JSONEncoder):
         return JSONEncoder.default(self, o)
 
 
-class LoginReq(Model):
-    login_id: int
-    username: str
-    password: str
-    passphrase: Optional[str]
-    profile: Optional[Profile]
-
 
 @router.post("/login/authenticate")
 async def authenticate(response: Response,
@@ -67,7 +61,14 @@ async def authenticate(response: Response,
 
 @router.post("/login/add")
 async def add_login(req: LoginReq, engine=Depends(create_db_engine)):
-    login_dict = req.dict(exclude_unset=True)
+    """
+    {
+       login_id: int
+    username: str
+    password: str
+    }
+    """
+    login_dict = req.model_dump(exclude_unset=True)
     repo: LoginRepository = LoginRepository(engine)
     result = await repo.insert_login(login_dict)
     if result == True:
@@ -79,6 +80,18 @@ async def add_login(req: LoginReq, engine=Depends(create_db_engine)):
 @router.post("/login/profile/add")
 async def add_login_profile(req: ProfileReq, username: str, engine=Depends(create_db_engine),
                             user: str = Depends(get_current_user)):
+    """
+    {
+        "firstname": "hello",
+        "lastname": "good",
+        "middlename": "gim",
+        "date_signed": "2025-12-12 12:23:43",
+        "age": 34,
+        "occupation": "worker",
+        "birthday": "2012-09-12",
+        "address": "street no. 1"
+    }
+    """
     profile_dict = req.model_dump(exclude_unset=True)
     profile_json = dumps(profile_dict, default=json_datetime_serializer)
     repo: LoginRepository = LoginRepository(engine)

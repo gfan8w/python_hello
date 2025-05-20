@@ -13,7 +13,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 from cryptography.fernet import Fernet
 from passlib.context import CryptContext
 
-from session_sample.config.db import create_db_engine
+from session_sample.config.db import create_db_engine, create_db_connection, client_od
 from session_sample.repo.login import LoginRepository
 from session_sample.repo.session import DbSessionRepository
 
@@ -54,8 +54,10 @@ class SessionDbMiddleware(BaseHTTPMiddleware):
         self.sess_key = sess_key
         self.sess_name = sess_name 
         self.expiry = expiry
-        self.client_od = AsyncIOMotorClient(f"mongodb://localhost:27017/")
-        self.engine = AIOEngine(client=self.client_od, database="session_sample")
+        # self.client_od = AsyncIOMotorClient(f"mongodb://localhost:27017/")
+        # self.engine = AIOEngine(client=self.client_od, database="session_sample")
+        self.client_od = client_od
+        self.engine = create_db_engine()
                 
     async def dispatch(self, request: Request, call_next):
         try:

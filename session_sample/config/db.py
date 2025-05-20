@@ -1,6 +1,8 @@
 from odmantic import AIOEngine
 from motor.motor_asyncio import AsyncIOMotorClient
 
+client_od:AsyncIOMotorClient = None
+
 def create_db_connection():
    global client_od
    client_od = AsyncIOMotorClient(f"mongodb://localhost:27017/")
